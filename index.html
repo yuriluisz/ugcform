@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QualiVida | Envie seu video UGC</title>
+  <title>QualiVida | Envie seu video</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Ovo&family=Varela+Round&display=swap" rel="stylesheet" />
@@ -21,7 +21,6 @@
       --cream-300: #d9cdb4;
       --danger: #ef7b7b;
       --success: #9ed19e;
-      overflow-x: hidden;
       --radius-lg: 20px;
       --radius-md: 14px;
       --radius-sm: 10px;
@@ -288,6 +287,11 @@
       box-shadow: none;
     }
 
+    .primary-btn.is-loading {
+      opacity: 0.95;
+      animation: sendingPulse 1s ease-in-out infinite;
+    }
+
     .status {
       margin-top: 16px;
       padding: 14px 16px;
@@ -309,6 +313,41 @@
       background: rgba(239, 123, 123, 0.1);
       border: 1px solid rgba(239, 123, 123, 0.4);
       color: var(--danger);
+    }
+
+    .success-panel {
+      margin-top: 12px;
+      border: 1px solid rgba(158, 209, 158, 0.4);
+      background: rgba(158, 209, 158, 0.12);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .success-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(158, 209, 158, 0.55);
+      display: grid;
+      place-items: center;
+      font-size: 1.1rem;
+      color: var(--success);
+      background: rgba(10, 20, 12, 0.45);
+    }
+
+    .success-title {
+      margin: 0;
+      font-family: "Ovo", serif;
+      color: var(--success);
+      font-size: 1.25rem;
+    }
+
+    .success-message {
+      margin: 0;
+      color: var(--cream-200);
+      line-height: 1.5;
     }
 
     .hidden {
@@ -372,6 +411,16 @@
       }
     }
 
+    @keyframes sendingPulse {
+      0%,
+      100% {
+        filter: saturate(1);
+      }
+      50% {
+        filter: saturate(1.15) brightness(1.05);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .fade-in,
       .glow,
@@ -425,8 +474,8 @@
       </div>
       <h1 class="fade-in" style="--delay: 0.2s;">Seja a voz natural da QualiVida</h1>
       <p class="subtitle fade-in" style="--delay: 0.28s;">
-        Seu video UGC mostra autenticidade e inspira outras pessoas a viverem com mais equilibrio e cuidado.
-        Em poucos passos, voce envia sua experiencia real.
+        Seu video ajuda outras pessoas a conhecerem melhor a sua experiencia com os produtos QualiVida.
+        Em poucos passos, voce conclui o envio com seguranca.
       </p>
       <div class="pill-list">
         <div class="pill fade-in" style="--delay: 0.36s;">
@@ -478,7 +527,7 @@
           <input id="telefone" name="telefone" type="tel" placeholder="(00) 00000-0000" required />
         </div>
         <div class="field file-row fade-in" style="--delay: 0.66s;">
-          <label for="video">Video UGC</label>
+          <label for="video">Seu video</label>
           <input id="video" name="video" type="file" accept="video/*" required />
           <span class="file-name" id="fileName">Nenhum arquivo selecionado</span>
         </div>
@@ -487,6 +536,12 @@
         </div>
         <button class="primary-btn fade-in" style="--delay: 0.82s;" id="submitBtn" type="submit">Enviar video</button>
       </form>
+
+      <div id="successPanel" class="success-panel hidden" role="status" aria-live="polite">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <h3 class="success-title">Envio concluido com sucesso.</h3>
+        <p id="successMessage" class="success-message">Recebemos seu video com cuidado.</p>
+      </div>
 
       <div id="status" class="status"></div>
     </section>
@@ -501,6 +556,8 @@
     const form = document.getElementById("ugcForm");
     const submitBtn = document.getElementById("submitBtn");
     const statusBox = document.getElementById("status");
+    const successPanel = document.getElementById("successPanel");
+    const successMessage = document.getElementById("successMessage");
     const fileInput = document.getElementById("video");
     const fileName = document.getElementById("fileName");
     const turnstileWrapper = document.getElementById("turnstileWrapper");
@@ -508,15 +565,63 @@
     let turnstileWidgetId = null;
     let pendingSubmit = false;
     let submissionSucceeded = false;
+    let sendingIntervalId = null;
 
     const setStatus = (type, message) => {
       if (submissionSucceeded && type === "error") {
         return;
       }
 
+      if (successPanel) {
+        successPanel.classList.add("hidden");
+      }
+
       statusBox.className = `status ${type}`;
       statusBox.textContent = message;
       statusBox.style.display = "block";
+    };
+
+    const startSendingAnimation = () => {
+      if (sendingIntervalId !== null) {
+        return;
+      }
+
+      let dots = 0;
+      submitBtn.classList.add("is-loading");
+      submitBtn.textContent = "Enviando";
+
+      sendingIntervalId = window.setInterval(() => {
+        dots = (dots + 1) % 4;
+        submitBtn.textContent = `Enviando${".".repeat(dots)}`;
+      }, 420);
+    };
+
+    const stopSendingAnimation = () => {
+      if (sendingIntervalId !== null) {
+        window.clearInterval(sendingIntervalId);
+        sendingIntervalId = null;
+      }
+
+      submitBtn.classList.remove("is-loading");
+      submitBtn.textContent = "Enviar video";
+    };
+
+    const showSuccessPanel = (message) => {
+      submissionSucceeded = true;
+      pendingSubmit = false;
+      form.classList.add("hidden");
+      statusBox.style.display = "none";
+
+      if (successMessage) {
+        successMessage.textContent = message;
+      }
+
+      if (successPanel) {
+        successPanel.classList.remove("hidden");
+      }
+
+      submitBtn.disabled = false;
+      stopSendingAnimation();
     };
 
     window.addEventListener("error", (event) => {
@@ -598,15 +703,7 @@
 
         if (isSuccess) {
           console.log("Webhook confirmado como sucesso");
-          submissionSucceeded = true;
-          pendingSubmit = false;
-          form.classList.add("hidden");
-          setStatus(
-            "success",
-            "Recebemos seu video com cuidado. Em breve voce tera um retorno claro e acolhedor da equipe QualiVida."
-          );
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Enviar video";
+          showSuccessPanel("Recebemos seu video com cuidado. Em breve voce tera um retorno claro e acolhedor da equipe QualiVida.");
           // sucesso: não resetar o Turnstile nem exibir erro
         } else if (data && String(data.result).toLowerCase().includes("cloudflare")) {
           setStatus(
@@ -614,7 +711,7 @@
             "Validacao do Cloudflare falhou. Resolva o captcha novamente e tente enviar."
           );
           submitBtn.disabled = false;
-          submitBtn.textContent = "Enviar video";
+          stopSendingAnimation();
           pendingSubmit = false;
           if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
             window.turnstile.reset(turnstileWidgetId);
@@ -626,7 +723,7 @@
             "Nao foi possivel enviar agora. Resposta inesperada do servidor."
           );
           submitBtn.disabled = false;
-          submitBtn.textContent = "Enviar video";
+          stopSendingAnimation();
           pendingSubmit = false;
           if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
             window.turnstile.reset(turnstileWidgetId);
@@ -636,15 +733,7 @@
         console.error("Erro na submissao:", error);
 
         if (error && error.name === "AbortError") {
-          submissionSucceeded = true;
-          pendingSubmit = false;
-          form.classList.add("hidden");
-          setStatus(
-            "success",
-            "Seu video foi enviado e esta em processamento. A confirmacao do servidor demorou mais que o esperado, mas o envio foi recebido."
-          );
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Enviar video";
+          showSuccessPanel("Seu video foi enviado e esta em processamento. A confirmacao do servidor demorou mais do que o esperado, mas o envio foi recebido.");
           return;
         }
 
@@ -653,7 +742,7 @@
           "Erro na comunicacao com o servidor. Verifique sua conexao e tente novamente."
         );
         submitBtn.disabled = false;
-        submitBtn.textContent = "Enviar video";
+        stopSendingAnimation();
         pendingSubmit = false;
         if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
           window.turnstile.reset(turnstileWidgetId);
@@ -673,7 +762,7 @@
     window.onTurnstileError = () => {
       pendingSubmit = false;
       submitBtn.disabled = false;
-      submitBtn.textContent = "Enviar video";
+      stopSendingAnimation();
       setStatus("error", "Nao foi possivel validar o captcha. Tente novamente.");
     };
 
@@ -705,12 +794,14 @@
 
       console.log("Submit disparado");
 
+      pendingSubmit = true;
       submitBtn.disabled = true;
-      submitBtn.textContent = "Enviando...";
+      startSendingAnimation();
 
       if (!window.turnstile || turnstileWidgetId === null) {
+        pendingSubmit = false;
         submitBtn.disabled = false;
-        submitBtn.textContent = "Enviar video";
+        stopSendingAnimation();
         setStatus("error", "Captcha nao carregou. Recarregue a pagina e tente novamente.");
         return;
       }
@@ -721,7 +812,6 @@
         return;
       }
 
-      pendingSubmit = true;
       window.turnstile.execute(turnstileWidgetId);
     });
   </script>
