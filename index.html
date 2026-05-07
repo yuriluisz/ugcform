@@ -499,9 +499,19 @@
         });
 
         let data;
+        let rawText = null;
+        console.log("HTTP status:", response.status, "ok:", response.ok);
         try {
+          // tenta parsear JSON
           data = await response.json();
         } catch (parseError) {
+          // se falhar, tenta ler texto cru para debugging
+          try {
+            rawText = await response.text();
+            console.warn("Resposta nao-JSON recebida:", rawText);
+          } catch (tErr) {
+            console.error("Erro ao ler resposta crua:", tErr);
+          }
           console.error("Erro ao fazer parse do JSON:", parseError);
           throw new Error("Resposta do servidor nao e JSON valido");
         }
@@ -553,9 +563,11 @@
           }
         } else {
           console.warn("Resposta inesperada:", data);
+          // mostra parte da resposta crua para ajudar a debugar sem spam
+          const raw = rawText || JSON.stringify(data);
           setStatus(
             "error",
-            "Nao foi possivel enviar agora. Tente novamente em instantes ou fale conosco pelo canal oficial."
+            "Nao foi possivel enviar agora. Resposta: " + (raw ? raw.slice(0, 200) : "(sem resposta)")
           );
           submitBtn.disabled = false;
           submitBtn.textContent = "Enviar video";
