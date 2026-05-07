@@ -498,20 +498,13 @@
           body: formData,
         });
 
-        let data;
-        let rawText = null;
+        let data = null;
+        const responseText = await response.text();
         console.log("HTTP status:", response.status, "ok:", response.ok);
         try {
-          // tenta parsear JSON
-          data = await response.json();
+          data = responseText ? JSON.parse(responseText) : null;
         } catch (parseError) {
-          // se falhar, tenta ler texto cru para debugging
-          try {
-            rawText = await response.text();
-            console.warn("Resposta nao-JSON recebida:", rawText);
-          } catch (tErr) {
-            console.error("Erro ao ler resposta crua:", tErr);
-          }
+          console.warn("Resposta nao-JSON recebida:", responseText);
           console.error("Erro ao fazer parse do JSON:", parseError);
           throw new Error("Resposta do servidor nao e JSON valido");
         }
@@ -564,7 +557,7 @@
         } else {
           console.warn("Resposta inesperada:", data);
           // mostra parte da resposta crua para ajudar a debugar sem spam
-          const raw = rawText || JSON.stringify(data);
+          const raw = responseText || JSON.stringify(data);
           setStatus(
             "error",
             "Nao foi possivel enviar agora. Resposta: " + (raw ? raw.slice(0, 200) : "(sem resposta)")
@@ -592,9 +585,12 @@
     };
 
     window.onTurnstileSuccess = (token) => {
-      if (pendingSubmit) {
-        submitWithToken(token);
+      if (!pendingSubmit) {
+        console.warn("Turnstile success sem submissao pendente");
+        return;
       }
+
+      submitWithToken(token);
     };
 
     window.onTurnstileError = () => {
@@ -628,6 +624,9 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      e.stopPropagation();
+
+      console.log("Submit disparado");
 
       submitBtn.disabled = true;
       submitBtn.textContent = "Enviando...";
