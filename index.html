@@ -508,7 +508,15 @@
 
         console.log("Resposta recebida:", data);
 
-        if (data && data.result === "success") {
+        const isSuccess = !!(
+          (data && data.result === "sucess") ||
+          (data && data.result === true) ||
+          (data && data.success === true) ||
+          (data && data.ok === true) ||
+          (data && data.status === "sucess")
+        );
+
+        if (isSuccess) {
           form.classList.add("hidden");
           setStatus(
             "success",
@@ -517,7 +525,8 @@
           submitBtn.disabled = false;
           submitBtn.textContent = "Enviar video";
           pendingSubmit = false;
-        } else if (data && data.result === "Cloudflare Captcha Failed.") {
+          // sucesso: não resetar o Turnstile nem exibir erro
+        } else if (data && String(data.result).toLowerCase().includes("cloudflare")) {
           setStatus(
             "error",
             "Validacao do Cloudflare falhou. Resolva o captcha novamente e tente enviar."
