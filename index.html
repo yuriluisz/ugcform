@@ -498,15 +498,15 @@
           body: formData,
         });
 
-        let data = null;
         const responseText = await response.text();
         console.log("HTTP status:", response.status, "ok:", response.ok);
+
+        let data = null;
         try {
           data = responseText ? JSON.parse(responseText) : null;
         } catch (parseError) {
           console.warn("Resposta nao-JSON recebida:", responseText);
-          console.error("Erro ao fazer parse do JSON:", parseError);
-          throw new Error("Resposta do servidor nao e JSON valido");
+          console.warn("Parse do JSON falhou, mas continuando com texto cru:", parseError);
         }
 
         console.log("Resposta recebida:", data);
@@ -524,6 +524,7 @@
         const statusStr = normalize(data && data.status);
 
         const acceptedSuccessTokens = new Set(["success", "sucess", "ok", "true", "1", "sent"]);
+        const acceptedFailureTokens = new Set(["error", "fail", "failed", "invalid", "cloudflare captcha failed."]);
 
         const isSuccess =
           acceptedSuccessTokens.has(resultStr) ||
@@ -531,9 +532,11 @@
           acceptedSuccessTokens.has(okStr) ||
           acceptedSuccessTokens.has(statusStr) ||
           resultStr.startsWith("success") ||
-          statusStr.startsWith("success");
+          statusStr.startsWith("success") ||
+          (response.ok && !acceptedFailureTokens.has(resultStr) && !acceptedFailureTokens.has(statusStr));
 
         if (isSuccess) {
+          console.log("Webhook confirmado como sucesso");
           form.classList.add("hidden");
           setStatus(
             "success",
@@ -556,11 +559,9 @@
           }
         } else {
           console.warn("Resposta inesperada:", data);
-          // mostra parte da resposta crua para ajudar a debugar sem spam
-          const raw = responseText || JSON.stringify(data);
           setStatus(
             "error",
-            "Nao foi possivel enviar agora. Resposta: " + (raw ? raw.slice(0, 200) : "(sem resposta)")
+            "Nao foi possivel enviar agora. Resposta inesperada do servidor."
           );
           submitBtn.disabled = false;
           submitBtn.textContent = "Enviar video";
