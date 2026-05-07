@@ -280,6 +280,23 @@
       transform: translateY(-1px);
     }
 
+    .secondary-btn {
+      border: 1px solid rgba(147, 173, 133, 0.45);
+      border-radius: 999px;
+      padding: 11px 16px;
+      background: rgba(12, 18, 13, 0.45);
+      color: var(--cream-100);
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
+      width: fit-content;
+    }
+
+    .secondary-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(147, 173, 133, 0.7);
+    }
+
     .primary-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -541,6 +558,7 @@
         <div class="success-icon" aria-hidden="true">✓</div>
         <h3 class="success-title">Envio concluido com sucesso.</h3>
         <p id="successMessage" class="success-message">Recebemos seu video com cuidado.</p>
+        <button id="newUploadBtn" class="secondary-btn" type="button">Enviar outro video</button>
       </div>
 
       <div id="status" class="status"></div>
@@ -558,6 +576,7 @@
     const statusBox = document.getElementById("status");
     const successPanel = document.getElementById("successPanel");
     const successMessage = document.getElementById("successMessage");
+    const newUploadBtn = document.getElementById("newUploadBtn");
     const fileInput = document.getElementById("video");
     const fileName = document.getElementById("fileName");
     const turnstileWrapper = document.getElementById("turnstileWrapper");
@@ -622,6 +641,29 @@
 
       submitBtn.disabled = false;
       stopSendingAnimation();
+    };
+
+    const resetForNewUpload = () => {
+      submissionSucceeded = false;
+      pendingSubmit = false;
+      stopSendingAnimation();
+
+      form.reset();
+      form.classList.remove("hidden");
+
+      if (successPanel) {
+        successPanel.classList.add("hidden");
+      }
+
+      statusBox.style.display = "none";
+      statusBox.textContent = "";
+      fileName.textContent = "Nenhum arquivo selecionado";
+
+      if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
+
+      document.getElementById("nome").focus();
     };
 
     window.addEventListener("error", (event) => {
@@ -787,6 +829,10 @@
       const file = fileInput.files && fileInput.files[0];
       fileName.textContent = file ? file.name : "Nenhum arquivo selecionado";
     });
+
+    if (newUploadBtn) {
+      newUploadBtn.addEventListener("click", resetForNewUpload);
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
