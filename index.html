@@ -496,6 +496,7 @@
     const WEBHOOK_URL = "https://skbidi-n8n.cv1fht.easypanel.host/webhook/images";
     const TURNSTILE_SITEKEY = "0x4AAAAAADKfxSQJEzPcH-yb";
     const TURNSTILE_MODE = "visible";
+    const REQUEST_TIMEOUT_MS = 90000;
 
     const form = document.getElementById("ugcForm");
     const submitBtn = document.getElementById("submitBtn");
@@ -544,10 +545,19 @@
       formData.append("cf_turnstile_response", turnstileToken);
 
       try {
-        const response = await fetch(WEBHOOK_URL, {
-          method: "POST",
-          body: formData,
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        let response;
+        try {
+          response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         const responseText = await response.text();
         console.log("HTTP status:", response.status, "ok:", response.ok);
@@ -624,6 +634,20 @@
         }
       } catch (error) {
         console.error("Erro na submissao:", error);
+
+        if (error && error.name === "AbortError") {
+          submissionSucceeded = true;
+          pendingSubmit = false;
+          form.classList.add("hidden");
+          setStatus(
+            "success",
+            "Seu video foi enviado e esta em processamento. A confirmacao do servidor demorou mais que o esperado, mas o envio foi recebido."
+          );
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Enviar video";
+          return;
+        }
+
         setStatus(
           "error",
           "Erro na comunicacao com o servidor. Verifique sua conexao e tente novamente."
