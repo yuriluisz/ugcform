@@ -255,10 +255,13 @@
       padding: 12px;
       display: grid;
       gap: 10px;
+      justify-items: start;
+      align-content: start;
       width: 100%;
       max-width: 100%;
       min-width: 0;
       overflow: hidden;
+      min-height: 118px;
     }
 
     #turnstileWidget {
@@ -266,11 +269,31 @@
       max-width: 100%;
       min-width: 0;
       overflow: hidden;
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
     }
 
     #turnstileWidget > div,
     #turnstileWidget iframe {
       max-width: 100% !important;
+    }
+
+    .turnstile-loading {
+      width: 100%;
+      min-height: 74px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(147, 173, 133, 0.16);
+      background: linear-gradient(90deg, rgba(12, 18, 13, 0.35), rgba(20, 30, 20, 0.65), rgba(12, 18, 13, 0.35));
+      background-size: 200% 100%;
+      animation: loadingShimmer 1.4s linear infinite;
+      display: grid;
+      place-items: center;
+      color: var(--cream-300);
+      font-size: 0.9rem;
+      letter-spacing: 0.02em;
+      text-align: center;
+      padding: 0 12px;
     }
 
     .turnstile-wrapper.is-invisible {
@@ -457,6 +480,15 @@
       }
     }
 
+    @keyframes loadingShimmer {
+      0% {
+        background-position: 0% 50%;
+      }
+      100% {
+        background-position: 200% 50%;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .fade-in,
       .glow,
@@ -502,6 +534,7 @@
 
       .turnstile-wrapper {
         overflow-x: hidden;
+        min-height: 88px;
       }
 
       .glow {
@@ -582,6 +615,7 @@
           <span class="file-name" id="fileName">Nenhum arquivo selecionado</span>
         </div>
         <div class="turnstile-wrapper fade-in" id="turnstileWrapper" style="--delay: 0.74s;">
+          <div class="turnstile-loading" id="turnstileLoading">Carregando validação de segurança...</div>
           <div id="turnstileWidget"></div>
         </div>
         <button class="primary-btn fade-in" style="--delay: 0.82s;" id="submitBtn" type="submit">Enviar video</button>
@@ -613,6 +647,7 @@
     const fileInput = document.getElementById("video");
     const fileName = document.getElementById("fileName");
     const turnstileWrapper = document.getElementById("turnstileWrapper");
+    const turnstileLoading = document.getElementById("turnstileLoading");
 
     let turnstileWidgetId = null;
     let pendingSubmit = false;
@@ -849,15 +884,23 @@
       const isInvisible = TURNSTILE_MODE === "invisible";
       turnstileWrapper.classList.toggle("is-invisible", isInvisible);
 
-      const useCompact = window.matchMedia("(max-width: 420px)").matches;
+      if (turnstileLoading) {
+        turnstileLoading.style.display = isInvisible ? "none" : "grid";
+      }
 
       turnstileWidgetId = window.turnstile.render("#turnstileWidget", {
         sitekey: TURNSTILE_SITEKEY,
-        size: useCompact ? "compact" : "normal",
+        size: "normal",
         appearance: isInvisible ? "interaction-only" : "always",
         callback: window.onTurnstileSuccess,
         "error-callback": window.onTurnstileError,
       });
+
+      if (turnstileLoading) {
+        window.setTimeout(() => {
+          turnstileLoading.style.display = "none";
+        }, 250);
+      }
     };
 
     fileInput.addEventListener("change", () => {
