@@ -45,17 +45,20 @@
         radial-gradient(900px 500px at 90% 10%, rgba(93, 120, 82, 0.16), transparent 55%),
         linear-gradient(160deg, var(--bg-900), var(--bg-800) 45%, var(--bg-850));
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 32px 18px 48px;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
     }
 
     .page {
       width: min(980px, 100%);
       display: grid;
       gap: 26px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
       align-items: start;
       position: relative;
       min-width: 0;
@@ -252,6 +255,22 @@
       padding: 12px;
       display: grid;
       gap: 10px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #turnstileWidget {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #turnstileWidget > div,
+    #turnstileWidget iframe {
+      max-width: 100% !important;
     }
 
     .turnstile-wrapper.is-invisible {
@@ -454,13 +473,22 @@
     }
 
     @media (max-width: 720px) {
+      html,
       body {
+        height: auto;
+      }
+
+      body {
+        display: block;
+        min-height: 100dvh;
         padding: 18px 12px 28px;
       }
 
       .page {
+        width: 100%;
         gap: 18px;
         grid-template-columns: 1fr;
+        align-content: start;
       }
 
       .hero,
@@ -475,6 +503,11 @@
       .turnstile-wrapper {
         overflow-x: hidden;
       }
+
+      .glow {
+        display: none;
+      }
+
       .pill {
         width: 100%;
       }
@@ -816,9 +849,11 @@
       const isInvisible = TURNSTILE_MODE === "invisible";
       turnstileWrapper.classList.toggle("is-invisible", isInvisible);
 
+      const useCompact = window.matchMedia("(max-width: 420px)").matches;
+
       turnstileWidgetId = window.turnstile.render("#turnstileWidget", {
         sitekey: TURNSTILE_SITEKEY,
-        size: "normal",
+        size: useCompact ? "compact" : "normal",
         appearance: isInvisible ? "interaction-only" : "always",
         callback: window.onTurnstileSuccess,
         "error-callback": window.onTurnstileError,
