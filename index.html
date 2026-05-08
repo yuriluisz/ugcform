@@ -250,6 +250,52 @@
       gap: 8px;
     }
 
+    .file-picker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .file-input-native {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .file-input-btn {
+      border: 1px solid rgba(147, 173, 133, 0.5);
+      border-radius: 999px;
+      padding: 11px 16px;
+      background: linear-gradient(135deg, rgba(127, 154, 114, 0.28), rgba(12, 18, 13, 0.35));
+      color: var(--cream-100);
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+    }
+
+    .file-input-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(147, 173, 133, 0.72);
+    }
+
+    .file-input-native:focus-visible + .file-input-btn {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(147, 173, 133, 0.22);
+      border-color: rgba(147, 173, 133, 0.8);
+    }
+
     .file-name {
       font-size: 0.85rem;
       color: var(--cream-300);
@@ -618,7 +664,10 @@
         </div>
         <div class="field file-row fade-in" style="--delay: 0.66s;">
           <label for="video">Seu vídeo</label>
-          <input id="video" name="video" type="file" accept="video/*" required />
+          <div class="file-picker">
+            <input id="video" class="file-input-native" name="video" type="file" accept="video/*" required />
+            <label for="video" class="file-input-btn">Escolher arquivo</label>
+          </div>
           <span class="file-name" id="fileName">Nenhum arquivo selecionado</span>
         </div>
         <div class="turnstile-wrapper fade-in" id="turnstileWrapper" style="--delay: 0.74s;">
