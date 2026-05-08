@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QualiVida | Envie seu video</title>
+  <title>Quali Vida | Envie seu vídeo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Ovo&family=Varela+Round&display=swap" rel="stylesheet" />
@@ -553,12 +553,12 @@
 
     <section class="hero fade-in" style="--delay: 0.02s;">
       <div class="logo-placeholder fade-in" style="--delay: 0.12s;">
-        <img src="./public/logo.png" alt="Logo QualiVida" />
+        <img src="./public/logo.png" alt="Logo Quali Vida" />
       </div>
-      <h1 class="fade-in" style="--delay: 0.2s;">Seja a voz natural da QualiVida</h1>
+      <h1 class="fade-in" style="--delay: 0.2s;">Seja a voz natural da Quali Vida</h1>
       <p class="subtitle fade-in" style="--delay: 0.28s;">
-        Seu video ajuda outras pessoas a conhecerem melhor a sua experiencia com os produtos QualiVida.
-        Em poucos passos, voce conclui o envio com seguranca.
+        Seu vídeo ajuda outras pessoas a conhecerem melhor a sua experiência com os produtos Quali Vida.
+        Em poucos passos, você conclui o envio com segurança.
       </p>
       <div class="pill-list">
         <div class="pill fade-in" style="--delay: 0.36s;">
@@ -585,15 +585,15 @@
               <path d="M12 3l2.5 5 5.5 0.8-4 3.9 0.9 5.6-4.9-2.6-4.9 2.6 0.9-5.6-4-3.9 5.5-0.8z"></path>
             </svg>
           </div>
-          <span>Seu video ajuda outras pessoas a escolher melhor.</span>
+          <span>Seu vídeo ajuda outras pessoas a escolher melhor.</span>
         </div>
       </div>
     </section>
 
     <section class="card fade-in" style="--delay: 0.1s;">
-      <h2 class="form-title fade-in" style="--delay: 0.26s;">Envio do seu video</h2>
+      <h2 class="form-title fade-in" style="--delay: 0.26s;">Envio do seu vídeo</h2>
       <p class="form-lead fade-in" style="--delay: 0.34s;">
-        Complete os dados abaixo e envie seu video. Nossa equipe confere com carinho e responde em breve.
+        Complete os dados abaixo e envie seu vídeo. Nossa equipe confere com carinho e responde em breve.
       </p>
 
       <form id="ugcForm">
@@ -606,11 +606,11 @@
           <input id="email" name="email" type="email" placeholder="voce@email.com" required />
         </div>
         <div class="field fade-in" style="--delay: 0.58s;">
-          <label for="telefone">Numero de Telefone</label>
+          <label for="telefone">Número de Telefone</label>
           <input id="telefone" name="telefone" type="tel" placeholder="(00) 00000-0000" required />
         </div>
         <div class="field file-row fade-in" style="--delay: 0.66s;">
-          <label for="video">Seu video</label>
+          <label for="video">Seu vídeo</label>
           <input id="video" name="video" type="file" accept="video/*" required />
           <span class="file-name" id="fileName">Nenhum arquivo selecionado</span>
         </div>
@@ -618,14 +618,14 @@
           <div class="turnstile-loading" id="turnstileLoading">Carregando validação de segurança...</div>
           <div id="turnstileWidget"></div>
         </div>
-        <button class="primary-btn fade-in" style="--delay: 0.82s;" id="submitBtn" type="submit">Enviar video</button>
+        <button class="primary-btn fade-in" style="--delay: 0.82s;" id="submitBtn" type="submit">Enviar vídeo</button>
       </form>
 
       <div id="successPanel" class="success-panel hidden" role="status" aria-live="polite">
         <div class="success-icon" aria-hidden="true">✓</div>
-        <h3 class="success-title">Envio concluido com sucesso.</h3>
-        <p id="successMessage" class="success-message">Recebemos seu video com cuidado.</p>
-        <button id="newUploadBtn" class="secondary-btn" type="button">Enviar outro video</button>
+        <h3 class="success-title">Envio concluído com sucesso.</h3>
+        <p id="successMessage" class="success-message">Recebemos seu vídeo com cuidado.</p>
+        <button id="newUploadBtn" class="secondary-btn" type="button">Enviar outro vídeo</button>
       </div>
 
       <div id="status" class="status"></div>
@@ -633,7 +633,7 @@
   </div>
 
   <script>
-    const WEBHOOK_URL = "https://skbidi-n8n.cv1fht.easypanel.host/webhook/images";
+    const WEBHOOK_URL = "https://qualivida-n8n.0brr3v.easypanel.host/webhook/videos";
     const TURNSTILE_SITEKEY = "0x4AAAAAADKfxSQJEzPcH-yb";
     const TURNSTILE_MODE = "visible";
     const REQUEST_TIMEOUT_MS = 90000;
@@ -781,7 +781,7 @@
         try {
           data = responseText ? JSON.parse(responseText) : null;
         } catch (parseError) {
-          console.warn("Resposta nao-JSON recebida:", responseText);
+          console.warn("Resposta não-JSON recebida:", responseText);
           console.warn("Parse do JSON falhou, mas continuando com texto cru:", parseError);
         }
 
@@ -813,12 +813,12 @@
 
         if (isSuccess) {
           console.log("Webhook confirmado como sucesso");
-          showSuccessPanel("Recebemos seu video com cuidado. Em breve voce tera um retorno claro e acolhedor da equipe QualiVida.");
+          showSuccessPanel("Recebemos seu vídeo com cuidado. Em breve você terá um retorno claro e acolhedor da equipe Quali Vida.");
           // sucesso: não resetar o Turnstile nem exibir erro
         } else if (data && String(data.result).toLowerCase().includes("cloudflare")) {
           setStatus(
             "error",
-            "Validacao do Cloudflare falhou. Resolva o captcha novamente e tente enviar."
+            "Validação do Cloudflare falhou. Resolva o captcha novamente e tente enviar."
           );
           submitBtn.disabled = false;
           stopSendingAnimation();
@@ -830,7 +830,7 @@
           console.warn("Resposta inesperada:", data);
           setStatus(
             "error",
-            "Nao foi possivel enviar agora. Resposta inesperada do servidor."
+            "Não foi possível enviar agora. Resposta inesperada do servidor."
           );
           submitBtn.disabled = false;
           stopSendingAnimation();
@@ -843,13 +843,13 @@
         console.error("Erro na submissao:", error);
 
         if (error && error.name === "AbortError") {
-          showSuccessPanel("Seu video foi enviado e esta em processamento. A confirmacao do servidor demorou mais do que o esperado, mas o envio foi recebido.");
+          showSuccessPanel("Seu vídeo foi enviado e está em processamento. A confirmação do servidor demorou mais do que o esperado, mas o envio foi recebido.");
           return;
         }
 
         setStatus(
           "error",
-          "Erro na comunicacao com o servidor. Verifique sua conexao e tente novamente."
+          "Erro na comunicação com o servidor. Verifique sua conexão e tente novamente."
         );
         submitBtn.disabled = false;
         stopSendingAnimation();
@@ -873,7 +873,7 @@
       pendingSubmit = false;
       submitBtn.disabled = false;
       stopSendingAnimation();
-      setStatus("error", "Nao foi possivel validar o captcha. Tente novamente.");
+      setStatus("error", "Não foi possível validar o captcha. Tente novamente.");
     };
 
     window.onTurnstileLoad = () => {
@@ -926,7 +926,7 @@
         pendingSubmit = false;
         submitBtn.disabled = false;
         stopSendingAnimation();
-        setStatus("error", "Captcha nao carregou. Recarregue a pagina e tente novamente.");
+        setStatus("error", "Captcha não carregou. Recarregue a página e tente novamente.");
         return;
       }
 
