@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self' https://qualivida-n8n.0brr3v.easypanel.host https://*.r2.cloudflarestorage.com https://challenges.cloudflare.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://challenges.cloudflare.com;" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0c120d" />
   <meta name="description" content="Envie seu vídeo e seja a voz natural da Quali Vida." />
@@ -689,10 +690,11 @@
   </div>
 
   <script>
-    const WEBHOOK_URL = "https://qualivida-n8n.0brr3v.easypanel.host/webhook/videos";
+    const SIGN_WEBHOOK_URL = "https://qualivida-n8n.0brr3v.easypanel.host/webhook/videos";
+    const COMPLETE_WEBHOOK_URL = "https://qualivida-n8n.0brr3v.easypanel.host/webhook-test/complete";
     const TURNSTILE_SITEKEY = "0x4AAAAAADKfxSQJEzPcH-yb";
     const TURNSTILE_MODE = "visible";
-    const REQUEST_TIMEOUT_MS = 90000;
+    const REQUEST_TIMEOUT_MS = 20000;
 
     const form = document.getElementById("ugcForm");
     const submitBtn = document.getElementById("submitBtn");
@@ -749,6 +751,23 @@
       submitBtn.textContent = "Enviar video";
     };
 
+    const resetCaptcha = () => {
+      if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
+    };
+
+    const resetAfterFailure = (message, shouldResetCaptcha = true) => {
+      setStatus("error", message);
+      submitBtn.disabled = false;
+      stopSendingAnimation();
+      pendingSubmit = false;
+
+      if (shouldResetCaptcha) {
+        resetCaptcha();
+      }
+    };
+
     const showSuccessPanel = (message) => {
       submissionSucceeded = true;
       pendingSubmit = false;
@@ -783,11 +802,87 @@
       statusBox.textContent = "";
       fileName.textContent = "Nenhum arquivo selecionado";
 
-      if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
-        window.turnstile.reset(turnstileWidgetId);
+      resetCaptcha();
+      document.getElementById("nome").focus();
+    };
+
+    const normalizeResponseData = (responseText) => {
+      if (!responseText) {
+        return null;
       }
 
-      document.getElementById("nome").focus();
+      try {
+        return JSON.parse(responseText);
+      } catch (error) {
+        console.warn("Resposta não-JSON recebida:", responseText);
+        console.warn("Parse do JSON falhou:", error);
+        return null;
+      }
+    };
+
+    const requestSignedUpload = async (payload) => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(SIGN_WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        const responseText = await response.text();
+        const data = normalizeResponseData(responseText);
+
+        if (!response.ok) {
+          throw new Error((data && data.message) || `Falha ao solicitar URL assinada (${response.status})`);
+        }
+
+        if (!data || (!data.uploadUrl && !data.url)) {
+          throw new Error("O n8n não devolveu uma URL assinada válida.");
+        }
+
+        return data;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    const uploadVideoDirectly = async (uploadUrl, file) => {
+      const response = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Falha no upload direto (${response.status})`);
+      }
+
+      return response;
+    };
+
+    const notifyUploadComplete = async (payload) => {
+      if (!COMPLETE_WEBHOOK_URL) {
+        return;
+      }
+
+      try {
+        await fetch(COMPLETE_WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        console.warn("Falha ao notificar conclusão no n8n:", error);
+      }
     };
 
     window.addEventListener("error", (event) => {
@@ -808,117 +903,57 @@
     });
 
     const submitWithToken = async (turnstileToken) => {
-      const formData = new FormData();
-      formData.append("nome_cliente", document.getElementById("nome").value.trim());
-      formData.append("email", document.getElementById("email").value.trim());
-      formData.append("telefone", document.getElementById("telefone").value.trim());
-      formData.append("video_file", fileInput.files[0]);
-      formData.append("cf_turnstile_response", turnstileToken);
+      const selectedFile = fileInput.files && fileInput.files[0];
+
+      if (!selectedFile) {
+        resetAfterFailure("Selecione um vídeo antes de enviar.", false);
+        return;
+      }
+
+      const payload = {
+        nome_cliente: document.getElementById("nome").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        telefone: document.getElementById("telefone").value.trim(),
+        fileName: selectedFile.name,
+        fileType: selectedFile.type || "application/octet-stream",
+        fileSize: selectedFile.size,
+        turnstileToken,
+      };
 
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        const signedUpload = await requestSignedUpload(payload);
+        const uploadUrl = signedUpload.uploadUrl || signedUpload.url;
+        const objectKey = signedUpload.objectKey || signedUpload.key || selectedFile.name;
 
-        let response;
-        try {
-          response = await fetch(WEBHOOK_URL, {
-            method: "POST",
-            body: formData,
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
+        await uploadVideoDirectly(uploadUrl, selectedFile);
 
-        const responseText = await response.text();
-        console.log("HTTP status:", response.status, "ok:", response.ok);
+        await notifyUploadComplete({
+          ...payload,
+          objectKey,
+          uploadUrl,
+          status: "uploaded",
+        });
 
-        let data = null;
-        try {
-          data = responseText ? JSON.parse(responseText) : null;
-        } catch (parseError) {
-          console.warn("Resposta não-JSON recebida:", responseText);
-          console.warn("Parse do JSON falhou, mas continuando com texto cru:", parseError);
-        }
-
-        console.log("Resposta recebida:", data);
-
-        // Normalize response to accept several success formats (including common typos)
-        const normalize = (v) => {
-          if (v === null || v === undefined) return "";
-          if (typeof v === "boolean") return v ? "true" : "false";
-          return String(v).toLowerCase().trim();
-        };
-
-        const resultStr = normalize(data && data.result);
-        const successStr = normalize(data && data.success);
-        const okStr = normalize(data && data.ok);
-        const statusStr = normalize(data && data.status);
-
-        const acceptedSuccessTokens = new Set(["success", "sucess", "ok", "true", "1", "sent"]);
-        const acceptedFailureTokens = new Set(["error", "fail", "failed", "invalid", "cloudflare captcha failed."]);
-
-        const isSuccess =
-          acceptedSuccessTokens.has(resultStr) ||
-          acceptedSuccessTokens.has(successStr) ||
-          acceptedSuccessTokens.has(okStr) ||
-          acceptedSuccessTokens.has(statusStr) ||
-          resultStr.startsWith("success") ||
-          statusStr.startsWith("success") ||
-          (response.ok && !acceptedFailureTokens.has(resultStr) && !acceptedFailureTokens.has(statusStr));
-
-        if (isSuccess) {
-          console.log("Webhook confirmado como sucesso");
-          showSuccessPanel("Recebemos seu vídeo com cuidado. Em breve você terá um retorno claro e acolhedor da equipe Quali Vida.");
-          // sucesso: não resetar o Turnstile nem exibir erro
-        } else if (data && String(data.result).toLowerCase().includes("cloudflare")) {
-          setStatus(
-            "error",
-            "Validação do Cloudflare falhou. Resolva o captcha novamente e tente enviar."
-          );
-          submitBtn.disabled = false;
-          stopSendingAnimation();
-          pendingSubmit = false;
-          if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
-            window.turnstile.reset(turnstileWidgetId);
-          }
-        } else {
-          console.warn("Resposta inesperada:", data);
-          setStatus(
-            "error",
-            "Não foi possível enviar agora. Resposta inesperada do servidor."
-          );
-          submitBtn.disabled = false;
-          stopSendingAnimation();
-          pendingSubmit = false;
-          if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
-            window.turnstile.reset(turnstileWidgetId);
-          }
-        }
+        showSuccessPanel("Seu vídeo foi enviado direto para a nuvem e já entrou no fluxo de processamento da Quali Vida.");
       } catch (error) {
         console.error("Erro na submissao:", error);
 
-        if (error && error.name === "AbortError") {
-          showSuccessPanel("Seu vídeo foi enviado e está em processamento. A confirmação do servidor demorou mais do que o esperado, mas o envio foi recebido.");
-          return;
-        }
-
-        setStatus(
-          "error",
-          "Erro na comunicação com o servidor. Verifique sua conexão e tente novamente."
+        resetAfterFailure(
+          error && error.name === "AbortError"
+            ? "A solicitação ao n8n demorou demais. Tente novamente."
+            : "Não foi possível concluir o envio. Verifique sua conexão e tente novamente."
         );
-        submitBtn.disabled = false;
-        stopSendingAnimation();
-        pendingSubmit = false;
-        if (window.turnstile && typeof window.turnstile.reset === "function" && turnstileWidgetId !== null) {
-          window.turnstile.reset(turnstileWidgetId);
-        }
       }
     };
 
     window.onTurnstileSuccess = (token) => {
       if (!pendingSubmit) {
-        console.warn("Turnstile success sem submissao pendente");
+        console.warn("Turnstile success sem submissao pendente (ignorado)");
+        return;
+      }
+
+      if (!token) {
+        console.warn("Turnstile retornou token vazio");
         return;
       }
 
@@ -934,6 +969,7 @@
 
     window.onTurnstileLoad = () => {
       if (!turnstileWrapper || !window.turnstile) {
+        console.warn("Turnstile API ou wrapper não disponível");
         return;
       }
 
@@ -944,18 +980,26 @@
         turnstileLoading.style.display = isInvisible ? "none" : "grid";
       }
 
-      turnstileWidgetId = window.turnstile.render("#turnstileWidget", {
-        sitekey: TURNSTILE_SITEKEY,
-        size: "normal",
-        appearance: isInvisible ? "interaction-only" : "always",
-        callback: window.onTurnstileSuccess,
-        "error-callback": window.onTurnstileError,
-      });
+      try {
+        turnstileWidgetId = window.turnstile.render("#turnstileWidget", {
+          sitekey: TURNSTILE_SITEKEY,
+          size: "normal",
+          appearance: isInvisible ? "interaction-only" : "always",
+          callback: window.onTurnstileSuccess,
+          "error-callback": window.onTurnstileError,
+          "retry-interval": 8000,
+        });
 
-      if (turnstileLoading) {
-        window.setTimeout(() => {
-          turnstileLoading.style.display = "none";
-        }, 250);
+        if (turnstileLoading) {
+          window.setTimeout(() => {
+            turnstileLoading.style.display = "none";
+          }, 500);
+        }
+      } catch (error) {
+        console.error("Erro ao renderizar Turnstile:", error);
+        if (turnstileLoading) {
+          turnstileLoading.textContent = "Erro ao carregar validação. Recarregue a página.";
+        }
       }
     };
 
@@ -972,7 +1016,15 @@
       e.preventDefault();
       e.stopPropagation();
 
-      console.log("Submit disparado");
+      if (pendingSubmit) {
+        console.warn("Submit já em progresso");
+        return;
+      }
+
+      if (submissionSucceeded) {
+        console.warn("Submit já foi concluído com sucesso");
+        return;
+      }
 
       pendingSubmit = true;
       submitBtn.disabled = true;
@@ -989,6 +1041,14 @@
       const turnstileToken = window.turnstile.getResponse(turnstileWidgetId);
       if (turnstileToken) {
         await submitWithToken(turnstileToken);
+        return;
+      }
+
+      if (TURNSTILE_MODE === "visible") {
+        pendingSubmit = false;
+        submitBtn.disabled = false;
+        stopSendingAnimation();
+        setStatus("error", "Resolva o captcha para continuar.");
         return;
       }
 
